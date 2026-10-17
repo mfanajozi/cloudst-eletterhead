@@ -49,3 +49,6 @@ Thumbs.db
 # Build engine runtime workspaces
 engine-workspace/
 engine-output/
+
+# Dashboard-hosted build artifacts (binaries stay out of git)
+build-artifacts/

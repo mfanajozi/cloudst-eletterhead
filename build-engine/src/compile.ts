@@ -117,6 +117,60 @@ async function createSignedUrl(objectPath: string): Promise<string> {
   return `${SUPA_URL}/storage/v1${signed[0].signedURL}`;
 }
 
+// Primary publication path: dashboard server storage. The binary is PUT to the
+// dashboard's /api/builds/artifact endpoint which writes it to the server's own
+// disk (ARTIFACT_DIR) and returns an unguessable download URL. Supabase Storage
+// is only used as a fallback — its hosted gateway hard-caps uploads at ~50 MB,
+// below typical Flutter APK/EXE sizes.
+async function publishArtifact(
+  uploadPath: string,
+  artifact: { name: string; contentType: string }
+): Promise<string> {
+  const body = fs.readFileSync(uploadPath);
+  const dashUrl = (process.env.DASHBOARD_URL || "").replace(/\/+$/, "");
+  const ingestKey = process.env.ARTIFACT_INGEST_KEY || "";
+
+  if (dashUrl && ingestKey) {
+    console.log(`[6/6] Publishing artifact → dashboard server storage`);
+    const res = await fetch(
+      `${dashUrl}/api/builds/artifact?build_id=${BUILD_ID}&client_id=${CLIENT_ID}` +
+        `&platform=${PLATFORM}&version_code=${encodeURIComponent(VERSION_CODE)}` +
+        `&build_number=${encodeURIComponent(String(BUILD_NUMBER))}` +
+        `&filename=${encodeURIComponent(artifact.name)}`,
+      {
+        method: "PUT",
+        headers: {
+          "x-artifact-key": ingestKey,
+          "Content-Type": artifact.contentType,
+        },
+        body,
+      }
+    );
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(
+        `Dashboard artifact upload failed (HTTP ${res.status}): ${text.slice(0, 200)}`
+      );
+    }
+    const json = (await res.json()) as { ok?: boolean; download_url?: string };
+    if (!json.ok || !json.download_url) {
+      throw new Error("Dashboard artifact upload returned no download_url");
+    }
+    console.log(`     stored on server → ${json.download_url}`);
+    return json.download_url;
+  }
+
+  console.log(
+    "[6/6] Publishing artifact → Supabase app-artifacts (fallback; DASHBOARD_URL/ARTIFACT_INGEST_KEY not configured)"
+  );
+  const objectPath = await uploadArtifact(
+    `${PLATFORM}/${path.basename(uploadPath)}`,
+    body,
+    artifact.contentType
+  );
+  return createSignedUrl(objectPath);
+}
+
 // ─── small fs / shell helpers ─────────────────────────────────────────────────
 function env(name: string, fallback?: string): string {
   const v = process.env[name];
@@ -470,14 +524,8 @@ async function main() {
     uploadPath = target;
   }
 
-  console.log("[6/6] Publishing artifact → Supabase app-artifacts");
-  const body = fs.readFileSync(uploadPath);
-  const objectPath = await uploadArtifact(
-    `${PLATFORM}/${path.basename(uploadPath)}`,
-    body,
-    artifact.contentType
-  );
-  const downloadUrl = await createSignedUrl(objectPath);
+  console.log("[6/6] Publishing artifact");
+  const downloadUrl = await publishArtifact(uploadPath, artifact);
 
   // Keep a copy for the workflow's GH-artifact fallback download
   const ciCopy = path.join(repoRoot, "engine-output", PLATFORM, path.basename(uploadPath));

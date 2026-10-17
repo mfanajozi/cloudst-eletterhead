@@ -57,6 +57,10 @@ env:
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
   # Accepts either secret name (canonical or the guide's SUPABASE_SECRET_KEY)
   SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SECRET_KEY }}
+  # Artifact publication — dashboard server storage (primary upload path).
+  # If both are empty the engine falls back to Supabase Storage.
+  DASHBOARD_URL: ${{ secrets.DASHBOARD_URL }}
+  ARTIFACT_INGEST_KEY: ${{ secrets.ARTIFACT_INGEST_KEY }}
   KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
   KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
   KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
