@@ -23,8 +23,13 @@ const SUPA_URL = (env("SUPABASE_URL") ?? "").replace(/\/+$/, "");
 const SUPA_SERVICE =
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || "";
 
-const engineRoot = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(engineRoot, "..");
+const engineRoot = path.dirname(fileURLToPath(import.meta.url)); // …/build-engine/src
+// The engine lives at <repo>/build-engine/src/compile.ts — the repository root
+// (where flutter_blueprint/, engine-workspace/ and engine-output/ live) is two
+// levels up. The CI workflow checks out the repo at its root, so this must
+// resolve there — resolving only one level put the blueprint lookup inside
+// build-engine/ and failed every CI run with ENOENT.
+const repoRoot = path.resolve(engineRoot, "..", "..");
 const BLUEPRINT_DIR = path.join(repoRoot, "flutter_blueprint");
 const WORKSPACE = path.join(
   repoRoot,
