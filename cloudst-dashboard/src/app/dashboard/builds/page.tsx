@@ -24,6 +24,7 @@ export default function BuildsPage() {
   const [builds, setBuilds] = useState<Build[]>([]);
   const [loading, setLoading] = useState(true);
   const [triggering, setTriggering] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const load = async () => {
@@ -59,6 +60,47 @@ export default function BuildsPage() {
       setNotice("Network error while dispatching build.");
     } finally {
       setTriggering(null);
+    }
+  };
+
+  const downloadBuild = async (build: Build) => {
+    if (!build.download_url) return;
+    setDownloading(build.id);
+    setNotice(null);
+    try {
+      const res = await fetch(build.download_url);
+      if (!res.ok) {
+        setNotice(
+          res.status === 404
+            ? "Artifact not found or expired — re-trigger the build and try again."
+            : `Download failed (HTTP ${res.status}).`
+        );
+        return;
+      }
+      const blob = await res.blob();
+      const name =
+        res.headers
+          .get("Content-Disposition")
+          ?.match(/filename="(.+)"/)?.[1] ??
+        `${build.clients?.company_name ?? "build"}-${build.version_code}.apk`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      // Fetch failed (e.g. the stored URL is cross-origin) — let the browser
+      // navigate directly; the route's Content-Disposition forces the download.
+      const a = document.createElement("a");
+      a.href = build.download_url;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } finally {
+      setDownloading(null);
     }
   };
 
@@ -132,9 +174,19 @@ export default function BuildsPage() {
                       </td>
                       <td className="py-4">
                         {b.download_url ? (
-                          <Button variant="outline" size="sm" className="text-xs">
-                            <Download className="mr-1 h-3 w-3" />
-                            Download
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-xs"
+                            disabled={downloading === b.id}
+                            onClick={() => void downloadBuild(b)}
+                          >
+                            {downloading === b.id ? (
+                              <Loader2 className="mr-1 h-3 w-3 animate-spin" aria-hidden="true" />
+                            ) : (
+                              <Download className="mr-1 h-3 w-3" aria-hidden="true" />
+                            )}
+                            {downloading === b.id ? "Preparing…" : "Download"}
                           </Button>
                         ) : b.status === "queued" || b.status === "failed" ? (
                           <Button
