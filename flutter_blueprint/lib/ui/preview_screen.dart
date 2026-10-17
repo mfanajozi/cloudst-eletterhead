@@ -1,6 +1,7 @@
 import 'dart:io' show File;
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart' show PdfPageFormat;
 import 'package:printing/printing.dart';
@@ -21,9 +22,18 @@ class PreviewScreen extends StatelessWidget {
   final Uint8List? pdfBytes; // in-memory bytes straight from the generator
 
   Future<Uint8List> _loadBytes() async {
-    final given = pdfBytes;
+    // In-memory bytes straight from the generator (or persisted with the
+    // record). The web build has no file system — dart:io's File stubs throw
+    // 'Unsupported operation: _Namespace' the moment they are touched — so
+    // reading from disk is strictly a native-platform path.
+    final given = pdfBytes ?? letter.pdfBytes;
     if (given != null) return given;
-    final path = letter.pdfPath!;
+    final path = letter.pdfPath;
+    if (kIsWeb || path == null) {
+      throw StateError(
+          'PDF bytes not available on this device. Re-generate the letter '
+          'from the editor to refresh it.');
+    }
     return File(path).readAsBytes(); // native platforms only
   }
 

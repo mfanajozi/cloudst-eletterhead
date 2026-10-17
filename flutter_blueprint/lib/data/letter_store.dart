@@ -14,6 +14,7 @@ class LetterDraft {
     this.body = '',
     this.signatureBytes,
     this.pdfPath,
+    this.pdfBytes,
     this.paperFormat = 'A4',
   });
 
@@ -25,6 +26,8 @@ class LetterDraft {
   String body;
   Uint8List? signatureBytes; // transparent PNG drawn on the signature pad
   String? pdfPath; // application-documents path of the generated read-only PDF
+  Uint8List? pdfBytes; // rendered PDF kept with the record — web has no file
+  // system, and it also means previews open instantly even after a restart.
   String paperFormat; // 'A4' | 'Letter'
 
   Map<String, dynamic> toHive() => <String, dynamic>{
@@ -36,6 +39,7 @@ class LetterDraft {
         'body': body,
         'signature': signatureBytes,
         'pdfPath': pdfPath,
+        'pdf': pdfBytes,
         'paperFormat': paperFormat,
       };
 
@@ -50,6 +54,7 @@ class LetterDraft {
             ? m['signature'] as Uint8List
             : null,
         pdfPath: m['pdfPath'] as String?,
+        pdfBytes: m['pdf'] is Uint8List ? m['pdf'] as Uint8List : null,
         paperFormat: m['paperFormat'] as String? ?? 'A4',
       );
 

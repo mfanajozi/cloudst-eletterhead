@@ -29,6 +29,7 @@ Future<LetterDraft> finalizeLetter(LetterDraft draft, LetterStore store) async {
     body: draft.body,
     signatureBytes: draft.signatureBytes,
     pdfPath: path,
+    pdfBytes: bytes, // web has no file system — keep the PDF with the record
     paperFormat: draft.paperFormat,
   );
   await store.save(finished);
