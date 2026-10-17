@@ -386,8 +386,12 @@ async function main() {
     `flutter config --no-analytics`,
     { cwd: WORKSPACE }
   );
+  // Scaffold ALL platforms, not just the target: flutter_launcher_icons'
+  // shared pubspec config (ios: true) and other per-platform generators
+  // touch icon paths in ios/, windows/ etc. Scaffolding every platform
+  // guarantees those directories exist no matter which one we compile.
   sh(
-    `flutter create . --platforms ${PLATFORM} --org ${PACKAGE_ID.split(".").slice(0, 2).join(".")}`,
+    `flutter create . --platforms android,ios,web,windows --org ${PACKAGE_ID.split(".").slice(0, 2).join(".")}`,
     { cwd: WORKSPACE }
   );
 
