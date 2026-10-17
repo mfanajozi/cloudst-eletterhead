@@ -78,11 +78,22 @@ export default function BuildsPage() {
         return;
       }
       const blob = await res.blob();
+      // Filename: Content-Disposition header, else the URL's last path
+      // segment (e.g. "web-v1.0.0.zip" from Supabase Storage), else a
+      // platform-appropriate default — never a wrong extension.
+      const fallbackName = (() => {
+        try {
+          const last = new URL(build.download_url!).pathname.split("/").filter(Boolean).pop();
+          if (last && /\.[a-z0-9]{2,6}$/i.test(last)) return last;
+        } catch {
+          /* malformed URL — fall through */
+        }
+        const ext = build.target_platform === "android" ? "apk" : "zip";
+        return `${build.clients?.company_name ?? "build"}-${build.target_platform}-v${build.version_code}.${ext}`;
+      })();
       const name =
-        res.headers
-          .get("Content-Disposition")
-          ?.match(/filename="(.+)"/)?.[1] ??
-        `${build.clients?.company_name ?? "build"}-${build.version_code}.apk`;
+        res.headers.get("Content-Disposition")?.match(/filename="(.+)"/)?.[1] ??
+        fallbackName;
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
