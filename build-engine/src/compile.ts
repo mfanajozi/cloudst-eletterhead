@@ -90,7 +90,9 @@ async function uploadArtifact(
 }
 
 async function createSignedUrl(objectPath: string): Promise<string> {
-  const res = await fetch(`${SUPA_URL}/storage/v1/object/sign`, {
+  // Current Storage REST signs multiples paths at once under /object/sign/{bucket}
+  // with a `paths` array, and returns a matching array of signedURL entries.
+  const res = await fetch(`${SUPA_URL}/storage/v1/object/sign/app-artifacts`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -98,14 +100,16 @@ async function createSignedUrl(objectPath: string): Promise<string> {
       apikey: SUPA_SERVICE,
     },
     body: JSON.stringify({
-      path: objectPath.replace(/^app-artifacts\//, ""),
-      bucket: "app-artifacts",
+      paths: [objectPath.replace(/^app-artifacts\//, "")],
       expiresIn: 60 * 60 * 24 * 7, // 7 days
     }),
   });
   if (!res.ok) throw new Error(`Signed URL failed: ${res.status}`);
-  const json = (await res.json()) as { signedURL: string };
-  return `${SUPA_URL}/storage/v1${json.signedURL}`;
+  const signed = (await res.json()) as Array<{ error: string | null; signedURL: string }>;
+  if (!Array.isArray(signed) || signed.length === 0)
+    throw new Error("Signed URL request returned no entries");
+  if (signed[0].error) throw new Error(`Signed URL error: ${signed[0].error}`);
+  return `${SUPA_URL}/storage/v1${signed[0].signedURL}`;
 }
 
 // ─── small fs / shell helpers ─────────────────────────────────────────────────
