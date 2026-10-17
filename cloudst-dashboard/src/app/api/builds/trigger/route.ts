@@ -36,7 +36,8 @@ export async function POST(req: Request) {
     process.env.NEXT_PUBLIC_SUPABASE_URL ||
     ""
   ).replace(/\/+$/, "");
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  // Either secret name is accepted (canonical or the guide's SUPABASE_SECRET_KEY).
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
   const pat = process.env.GITHUB_DISPATCH_PAT;
   const repo = process.env.GITHUB_REPO || "mfanajozi/cloudst-eletterhead";
 
@@ -44,7 +45,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         error:
-          "Compilation service not configured. Set SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL and GITHUB_DISPATCH_PAT in the deployment environment.",
+          "Compilation service not configured. Set SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SECRET_KEY), SUPABASE_URL and GITHUB_DISPATCH_PAT in the deployment environment.",
       },
       { status: 503 }
     );

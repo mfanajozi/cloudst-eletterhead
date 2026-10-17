@@ -18,7 +18,10 @@ const PACKAGE_ID = env("PACKAGE_ID", "com.cloudst.eletterhead");
 const VERSION_CODE = env("VERSION_CODE", "1.0.0");
 const BUILD_NUMBER = env("BUILD_NUMBER", "1");
 const SUPA_URL = (env("SUPABASE_URL") ?? "").replace(/\/+$/, "");
-const SUPA_SERVICE = env("SUPABASE_SERVICE_ROLE_KEY", "");
+// Accept either secret name — the repo may be configured with the guide's
+// SUPABASE_SECRET_KEY or the canonical SUPABASE_SERVICE_ROLE_KEY.
+const SUPA_SERVICE =
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || "";
 
 const engineRoot = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(engineRoot, "..");
