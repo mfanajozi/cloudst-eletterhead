@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:signature/signature.dart';
 
 import '../core/pdf_output.dart' show finalizeLetter;
+import '../core/signature_export.dart' show exportSignaturePng;
 import '../data/letter_store.dart';
 import 'preview_screen.dart';
 
@@ -92,7 +93,10 @@ class _EditorScreenState extends State<EditorScreen> {
       }
       return;
     }
-    final png = await _signatureController.toPngBytes();
+    // Pure-Dart export — platform-independent (see signature_export.dart).
+    // The package's native export path has been observed to silently drop
+    // the PNG on some Android devices, erasing the signature from the PDF.
+    final png = exportSignaturePng(_signatureController);
     if (png != null) {
       _signatureBytes = png;
       _draft.signatureBytes = png;
