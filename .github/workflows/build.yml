@@ -58,9 +58,10 @@ env:
   # Accepts either secret name (canonical or the guide's SUPABASE_SECRET_KEY)
   SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SECRET_KEY }}
   # Artifact publication — dashboard server storage (primary upload path).
+  # Set as repo VARIABLES (vars.*) — secrets.DASHBOARD_URL etc. also accepted.
   # If both are empty the engine falls back to Supabase Storage.
-  DASHBOARD_URL: ${{ secrets.DASHBOARD_URL }}
-  ARTIFACT_INGEST_KEY: ${{ secrets.ARTIFACT_INGEST_KEY }}
+  DASHBOARD_URL: ${{ vars.DASHBOARD_URL || secrets.DASHBOARD_URL }}
+  ARTIFACT_INGEST_KEY: ${{ vars.ARTIFACT_INGEST_KEY || secrets.ARTIFACT_INGEST_KEY }}
   # If the dashboard ingest endpoint fails (503 = Vercel env vars missing),
   # fall back to Supabase Storage instead of failing the whole build.
   ARTIFACT_FALLBACK_STORAGE: "1"  KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
