@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Activity, Download, Loader2, X } from "lucide-react";
+import { Activity, Download, Loader2, Trash2, X } from "lucide-react";
 
 type Build = {
   id: string;
@@ -25,6 +25,7 @@ export default function BuildsPage() {
   const [loading, setLoading] = useState(true);
   const [triggering, setTriggering] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const load = async () => {
@@ -63,8 +64,38 @@ export default function BuildsPage() {
     }
   };
 
-  const downloadBuild = async (build: Build) => {
-    if (!build.download_url) return;
+  const deleteBuild = async (buildId: string) => {
+    if (!window.confirm("Delete this build and its stored artifact? This cannot be undone.")) return;
+    setDeleting(buildId);
+    setNotice(null);
+    try {
+      const res = await fetch("/api/builds/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ buildId }),
+      });
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok || !json.ok) {
+        setNotice(json.error || "Failed to delete build.");
+      } else {
+        await load();
+      }
+    } catch {
+      setNotice("Network error while deleting build.");
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  // Finished rows (with a delivered or failed compile) can be cleaned up.
+  const isDeletable = (b: Build) => b.status === "completed" || b.status === "failed";
+
+  const statusVariant = (
+    s: Build["status"]
+  ): "success" | "warning" | "destructive" | "default" =>
+    s === "completed" ? "success" : s === "compiling" ? "warning" : s === "failed" ? "destructive" : "default";
+
+  const downloadBuild = async (build: Build) => {    if (!build.download_url) return;
     setDownloading(build.id);
     setNotice(null);
     try {
@@ -151,8 +182,10 @@ export default function BuildsPage() {
               No builds yet. Upload client assets and queue your first build.
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
+            <>
+              {/* Desktop: full table (unchanged) */}
+              <div className="hidden overflow-x-auto sm:block">
+                <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-charcoal-200/50">
                     <th className="pb-3 text-xs font-medium uppercase tracking-wider text-charcoal-100">Client</th>
@@ -169,17 +202,7 @@ export default function BuildsPage() {
                       <td className="hidden py-4 capitalize text-charcoal-100 sm:table-cell">{b.target_platform}</td>
                       <td className="py-4 text-charcoal-100">{b.version_code}#{b.build_number}</td>
                       <td className="py-4">
-                        <Badge
-                          variant={
-                            b.status === "completed"
-                              ? "success"
-                              : b.status === "compiling"
-                                ? "warning"
-                                : b.status === "failed"
-                                  ? "destructive"
-                                  : "default"
-                          }
-                        >
+                        <Badge variant={statusVariant(b.status)}>
                           {b.status}
                         </Badge>
                       </td>
@@ -217,12 +240,99 @@ export default function BuildsPage() {
                         ) : (
                           <span className="text-xs text-charcoal-100">—</span>
                         )}
+                        {isDeletable(b) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="ml-1 px-2 text-xs text-charcoal-100 hover:text-red-400"
+                            disabled={deleting === b.id}
+                            onClick={() => void deleteBuild(b.id)}
+                            title="Delete build and artifact"
+                          >
+                            {deleting === b.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                            ) : (
+                              <Trash2 className="h-3 w-3" aria-hidden="true" />
+                            )}
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+
+            {/* Mobile: stacked cards — the table is too cramped at this width */}
+            <div className="space-y-3 sm:hidden">
+              {builds.map((b) => (
+                <div key={b.id} className="rounded-xl border border-charcoal-200/30 p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="text-sm font-medium text-white">
+                      {b.clients?.company_name ?? "—"}
+                    </h3>
+                    <Badge variant={statusVariant(b.status)}>{b.status}</Badge>
+                  </div>
+                  <div className="mt-1.5 flex items-center gap-2 text-xs text-charcoal-100">
+                    <span className="capitalize">{b.target_platform}</span>
+                    <span aria-hidden="true">·</span>
+                    <span>
+                      {b.version_code}#{b.build_number}
+                    </span>
+                  </div>
+                  <div className="mt-3 flex items-center gap-2">
+                    {b.download_url ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 text-xs"
+                        disabled={downloading === b.id}
+                        onClick={() => void downloadBuild(b)}
+                      >
+                        {downloading === b.id ? (
+                          <Loader2 className="mr-1 h-3 w-3 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <Download className="mr-1 h-3 w-3" aria-hidden="true" />
+                        )}
+                        {downloading === b.id ? "Preparing…" : "Download"}
+                      </Button>
+                    ) : b.status === "queued" || b.status === "failed" ? (
+                      <Button
+                        variant="gold"
+                        size="sm"
+                        className="flex-1 text-xs"
+                        disabled={triggering === b.id}
+                        onClick={() => void triggerBuild(b.id)}
+                      >
+                        {triggering === b.id ? (
+                          <Loader2 className="mr-1 h-3 w-3 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <Activity className="mr-1 h-3 w-3" aria-hidden="true" />
+                        )}
+                        {triggering === b.id ? "Dispatching…" : "Trigger"}
+                      </Button>
+                    ) : null}
+                    {isDeletable(b) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="px-2 text-xs text-charcoal-100 hover:text-red-400"
+                        disabled={deleting === b.id}
+                        onClick={() => void deleteBuild(b.id)}
+                        title="Delete build and artifact"
+                      >
+                        {deleting === b.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <Trash2 className="h-3 w-3" aria-hidden="true" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
           )}
         </CardContent>
       </Card>
