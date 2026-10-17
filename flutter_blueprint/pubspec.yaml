@@ -1,0 +1,49 @@
+name: letterhead_client_app
+description: Standard Whitelabel Client Core Engine — CloudST eLetterhead.
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  path_provider: ^2.1.4
+  hive: ^2.2.3 # Secure local database (no cloud replication by design)
+  hive_flutter: ^1.1.0
+  pdf: ^3.11.1 # Vector overlay rendering engine
+  printing: ^5.13.2 # System print / save / preview
+  signature: ^5.5.0 # Vector touch-drawn signature capture
+  share_plus: ^9.5.2 # Native share sheet / email export
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.3.11
+
+# ---------------------------------------------------------------------------
+# Automation package instructions (READ BY THE BUILD PIPELINE)
+# One high-res source file each; generators produce all platform densities.
+# ---------------------------------------------------------------------------
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/images/icon_source.png"
+  remove_alpha_ios: true
+
+flutter_native_splash:
+  color: "#ffffff"
+  image: "assets/images/splash_source.png"
+  android_12:
+    image: "assets/images/splash_source.png"
+    color: "#ffffff"
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/template_letterhead.pdf
+    - assets/images/icon_source.png
+    - assets/images/splash_source.png

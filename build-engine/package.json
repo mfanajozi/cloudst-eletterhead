@@ -1,0 +1,18 @@
+{
+  "name": "cloudst-build-engine",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "CloudST eLetterhead — CI compilation engine (blueprint → signed client app)",
+  "scripts": {
+    "compile": "tsx src/compile.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "tsx": "^4.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0"
+  }
+}

@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Activity, Download, Loader2 } from "lucide-react";
+import { Activity, Download, Loader2, X } from "lucide-react";
 
 type Build = {
   id: string;
@@ -23,18 +23,44 @@ export default function BuildsPage() {
   const supabase = createClient();
   const [builds, setBuilds] = useState<Build[]>([]);
   const [loading, setLoading] = useState(true);
+  const [triggering, setTriggering] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const load = async () => {
+    const { data, error } = await supabase
+      .from("app_builds")
+      .select("*, clients(company_name)")
+      .order("created_at", { ascending: false });
+    if (!error && data) setBuilds(data as unknown as Build[]);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const load = async () => {
-      const { data, error } = await supabase
-        .from("app_builds")
-        .select("*, clients(company_name)")
-        .order("created_at", { ascending: false });
-      if (!error && data) setBuilds(data as unknown as Build[]);
-      setLoading(false);
-    };
     void load();
   }, [supabase]);
+
+  const triggerBuild = async (buildId: string) => {
+    setTriggering(buildId);
+    setNotice(null);
+    try {
+      const res = await fetch("/api/builds/trigger", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ buildId }),
+      });
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok || !json.ok) {
+        setNotice(json.error || "Failed to dispatch build.");
+      } else {
+        setNotice("Dispatched to the GitHub Actions compiler — status updates automatically.");
+        await load();
+      }
+    } catch {
+      setNotice("Network error while dispatching build.");
+    } finally {
+      setTriggering(null);
+    }
+  };
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -44,6 +70,15 @@ export default function BuildsPage() {
           Track cross-compilation status and download generated binaries.
         </p>
       </div>
+
+      {notice && (
+        <div className="flex items-start justify-between gap-3 rounded-xl border border-gold-200/30 bg-gold-200/5 p-4 text-sm text-gold-200">
+          <span>{notice}</span>
+          <button aria-label="Dismiss" onClick={() => setNotice(null)}>
+            <X className="h-4 w-4 shrink-0" aria-hidden="true" />
+          </button>
+        </div>
+      )}
 
       <Card>
         <CardHeader>
@@ -100,6 +135,21 @@ export default function BuildsPage() {
                           <Button variant="outline" size="sm" className="text-xs">
                             <Download className="mr-1 h-3 w-3" />
                             Download
+                          </Button>
+                        ) : b.status === "queued" || b.status === "failed" ? (
+                          <Button
+                            variant="gold"
+                            size="sm"
+                            className="text-xs"
+                            disabled={triggering === b.id}
+                            onClick={() => void triggerBuild(b.id)}
+                          >
+                            {triggering === b.id ? (
+                              <Loader2 className="mr-1 h-3 w-3 animate-spin" aria-hidden="true" />
+                            ) : (
+                              <Activity className="mr-1 h-3 w-3" aria-hidden="true" />
+                            )}
+                            {triggering === b.id ? "Dispatching…" : "Trigger"}
                           </Button>
                         ) : (
                           <span className="text-xs text-charcoal-100">—</span>

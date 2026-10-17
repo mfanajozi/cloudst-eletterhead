@@ -1,0 +1,199 @@
+# CloudST eLetterhead — Automated Cross-Compilation System
+# =========================================================
+# Triggered by:
+#   1. repository_dispatch   (the SaaS dashboard fires these per build)
+#   2. workflow_dispatch     (manual testing from the Actions tab)
+#
+# Repo secrets required:
+#   SUPABASE_URL                  https://lzlxhnxvlcvzpjuzrsrb.supabase.co
+#   SUPABASE_SERVICE_ROLE_KEY     service-role key (artifact publish + status updates)
+#
+# Optional repo secrets:
+#   KEYSTORE_BASE64               pre-built release keystore (else a unique
+#   KEYSTORE_PASSWORD             keystore is generated per build via keytool)
+#   KEY_ALIAS / KEY_PASSWORD
+#
+# payload (repository_dispatch.client_payload / workflow_dispatch inputs):
+#   platform: android|ios|windows|web
+#   client_id, build_id, app_name, package_identity, version_code, build_number
+
+name: Client App Compiler
+
+on:
+  repository_dispatch:
+    types: [build-client]
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: "Target platform"
+        required: true
+        type: choice
+        options: [android, ios, windows, web]
+      client_id:
+        description: "Supabase clients.id (uuid)"
+        required: true
+      build_id:
+        description: "Supabase app_builds.id (uuid)"
+        required: true
+      app_name:
+        description: "Client display name"
+        required: true
+      package_identity:
+        description: "e.g. com.acme.eletterhead"
+        required: true
+      version_code:
+        description: "Version name"
+        required: true
+        default: "1.0.0"
+      build_number:
+        description: "Build number"
+        required: false
+        default: "1"
+
+permissions:
+  contents: read
+
+env:
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+  KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+  KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+  KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+  KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+jobs:
+  # ────────────────────────────── Android (apk) ──────────────────────────────
+  android:
+    if: >-
+      (github.event_name == 'repository_dispatch' && github.event.client_payload.platform == 'android')
+      || (github.event_name == 'workflow_dispatch' && inputs.platform == 'android')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Compile signed APK
+        env:
+          PLATFORM: android
+          CLIENT_ID: ${{ github.event.client_payload.client_id || inputs.client_id }}
+          BUILD_ID: ${{ github.event.client_payload.build_id || inputs.build_id }}
+          APP_NAME: ${{ github.event.client_payload.app_name || inputs.app_name }}
+          PACKAGE_ID: ${{ github.event.client_payload.package_identity || inputs.package_identity }}
+          VERSION_CODE: ${{ github.event.client_payload.version_code || inputs.version_code }}
+          BUILD_NUMBER: ${{ github.event.client_payload.build_number || inputs.build_number }}
+        run: |
+          cd build-engine
+          npm ci
+          npx tsx src/compile.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-apk
+          path: |
+            engine-output/**
+        continue-on-error: true
+
+  # ─────────────────────────────── Web (PWA tree) ──────────────────────────────
+  web:
+    if: >-
+      (github.event_name == 'repository_dispatch' && github.event.client_payload.platform == 'web')
+      || (github.event_name == 'workflow_dispatch' && inputs.platform == 'web')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Compile web build tree
+        env:
+          PLATFORM: web
+          CLIENT_ID: ${{ github.event.client_payload.client_id || inputs.client_id }}
+          BUILD_ID: ${{ github.event.client_payload.build_id || inputs.build_id }}
+          APP_NAME: ${{ github.event.client_payload.app_name || inputs.app_name }}
+          PACKAGE_ID: ${{ github.event.client_payload.package_identity || inputs.package_identity }}
+          VERSION_CODE: ${{ github.event.client_payload.version_code || inputs.version_code }}
+          BUILD_NUMBER: ${{ github.event.client_payload.build_number || inputs.build_number }}
+        run: |
+          cd build-engine
+          npm ci
+          npx tsx src/compile.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-build
+          path: |
+            engine-output/**
+        continue-on-error: true
+
+  # ───────────────────────────── Windows (.exe) ─────────────────────────────
+  windows:
+    if: >-
+      (github.event_name == 'repository_dispatch' && github.event.client_payload.platform == 'windows')
+      || (github.event_name == 'workflow_dispatch' && inputs.platform == 'windows')
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Compile Windows release bundle
+        env:
+          PLATFORM: windows
+          CLIENT_ID: ${{ github.event.client_payload.client_id || inputs.client_id }}
+          BUILD_ID: ${{ github.event.client_payload.build_id || inputs.build_id }}
+          APP_NAME: ${{ github.event.client_payload.app_name || inputs.app_name }}
+          PACKAGE_ID: ${{ github.event.client_payload.package_identity || inputs.package_identity }}
+          VERSION_CODE: ${{ github.event.client_payload.version_code || inputs.version_code }}
+          BUILD_NUMBER: ${{ github.event.client_payload.build_number || inputs.build_number }}
+        run: |
+          cd build-engine
+          npm ci
+          npx tsx src/compile.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-exe
+          path: |
+            engine-output/**
+        continue-on-error: true
+
+  # ───────────────────────────── iOS (unsigned .app) ─────────────────────────────
+  ios:
+    if: >-
+      (github.event_name == 'repository_dispatch' && github.event.client_payload.platform == 'ios')
+      || (github.event_name == 'workflow_dispatch' && inputs.platform == 'ios')
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Compile iOS build (unsigned — enterprise sign at deployment)
+        env:
+          PLATFORM: ios
+          CLIENT_ID: ${{ github.event.client_payload.client_id || inputs.client_id }}
+          BUILD_ID: ${{ github.event.client_payload.build_id || inputs.build_id }}
+          APP_NAME: ${{ github.event.client_payload.app_name || inputs.app_name }}
+          PACKAGE_ID: ${{ github.event.client_payload.package_identity || inputs.package_identity }}
+          VERSION_CODE: ${{ github.event.client_payload.version_code || inputs.version_code }}
+          BUILD_NUMBER: ${{ github.event.client_payload.build_number || inputs.build_number }}
+        run: |
+          cd build-engine
+          npm ci
+          npx tsx src/compile.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-build
+          path: |
+            engine-output/**
+        continue-on-error: true
