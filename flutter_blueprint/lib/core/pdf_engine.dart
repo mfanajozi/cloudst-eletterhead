@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 import 'brand.dart';
 
@@ -51,7 +52,7 @@ Future<Uint8List> renderLetterPdf({
         pw.SizedBox(height: 4),
         pw.Text(
           'Authorised Signature',
-          style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
+          style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
         ),
       ],
     ),
@@ -131,12 +132,28 @@ Future<Uint8List> renderLetterPdf({
 }
 
 /// Embedded letterhead bytes injected by the build pipeline into the app's
-/// compiled asset bundle. Falls back gracefully when unconfigured.
+/// compiled asset bundle.
+///
+/// The `pdf` package can only draw raster images (PNG/JPEG) — feeding it the
+/// raw PDF's bytes breaks its image parser ("Could not generate PDF:
+/// Index out of range … <size of the template>"), so the template is
+/// rasterised once through `printing` (PDFium on native, canvas on web),
+/// cached as PNG, then used as the underlay layer. Falls back gracefully
+/// (blank canvas) when the asset is missing or rastering is unsupported.
+Uint8List? _letterheadImageCache;
+bool _letterheadRasterFailed = false;
+
 Future<Uint8List?> _loadEmbeddedLetterhead() async {
+  if (_letterheadImageCache != null) return _letterheadImageCache;
+  if (_letterheadRasterFailed) return null;
   try {
     final data = await rootBundle.load(LETTERHEAD_ASSET);
-    return data.buffer.asUint8List();
+    final pdfBytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+    final page = await Printing.raster(pdfBytes, pages: [0], dpi: 150).first;
+    _letterheadImageCache = await page.toPng();
+    return _letterheadImageCache;
   } catch (_) {
+    _letterheadRasterFailed = true; // don't retry on every generation
     return null; // blank canvas fallback (dev environment)
   }
 }

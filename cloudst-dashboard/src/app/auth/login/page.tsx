@@ -82,7 +82,7 @@ export default function LoginPage() {
                   id="email"
                   name="email"
                   type="email"
-                  placeholder="masitlaem@gmail.com"
+                  placeholder="name.yourbusiness@yourdomain.co.za"
                   autoComplete="email"
                   required
                 />
