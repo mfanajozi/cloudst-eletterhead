@@ -490,8 +490,11 @@ async function main() {
   let artifact: { file: string; name: string; contentType: string } | null = null;
 
   if (PLATFORM === "android") {
+    // arm64-only: cuts native-lib payload ~50% vs the universal APK so the
+    // artifact fits Supabase Storage's hosted upload cap on Free projects
+    // (global 50 MB). All physical Android devices since ~2017 are arm64-v8a.
     sh(
-      `flutter build apk --release --build-name=${VERSION_CODE} --build-number=${BUILD_NUMBER}`
+      `flutter build apk --release --target-platform android-arm64 --build-name=${VERSION_CODE} --build-number=${BUILD_NUMBER}`
     );
     const apk = path.join(
       WORKSPACE,
