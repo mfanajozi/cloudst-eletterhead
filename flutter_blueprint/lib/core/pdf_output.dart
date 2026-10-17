@@ -69,5 +69,5 @@ Future<void> sharePdf({
   } else {
     file = XFile(filePath!, mimeType: 'application/pdf');
   }
-  await Share.shareXFiles([file], subject: subject);
+  await SharePlus.instance.share(ShareParams(files: [file], subject: subject));
 }

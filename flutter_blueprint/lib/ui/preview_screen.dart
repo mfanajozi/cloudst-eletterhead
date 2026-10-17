@@ -68,7 +68,7 @@ class PreviewScreen extends StatelessWidget {
                 : PdfPageFormat.a4,
             build: (_) => bytes,
             canChangePageFormat: false,
-            previewTheme: ThemeData.dark(useMaterial3: true),
+            pdfPreviewPageDecoration: const BoxDecoration(color: Color(0xFF161616)),
           );
         },
       ),

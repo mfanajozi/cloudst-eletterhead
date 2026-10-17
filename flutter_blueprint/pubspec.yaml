@@ -15,7 +15,7 @@ dependencies:
   pdf: ^3.11.1 # Vector overlay rendering engine
   printing: ^5.13.2 # System print / save / preview
   signature: ^5.5.0 # Vector touch-drawn signature capture
-  share_plus: ^9.5.2 # Native share sheet / email export
+  share_plus: ^13.3.1 # Native share sheet / email export
 
 dev_dependencies:
   flutter_test:

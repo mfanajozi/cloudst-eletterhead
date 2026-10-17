@@ -48,8 +48,8 @@ Future<Uint8List> renderLetterPdf({
               ? pw.Image(pw.MemoryImage(signatureBytes), fit: pw.BoxFit.contain)
               : null,
         ),
-        const pw.SizedBox(height: 4),
-        const pw.Text(
+        pw.SizedBox(height: 4),
+        pw.Text(
           'Authorised Signature',
           style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
         ),
@@ -80,7 +80,7 @@ Future<Uint8List> renderLetterPdf({
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   // Reserve clear space for the letterhead header art.
-                  const pw.SizedBox(height: 100),
+                  pw.SizedBox(height: 100),
                   pw.Align(
                     alignment: pw.Alignment.topRight,
                     child: pw.Text(
@@ -88,7 +88,7 @@ Future<Uint8List> renderLetterPdf({
                       style: const pw.TextStyle(fontSize: 12),
                     ),
                   ),
-                  const pw.SizedBox(height: 20),
+                  pw.SizedBox(height: 20),
                   pw.Text(
                     'To:\n$to',
                     style: const pw.TextStyle(
@@ -96,10 +96,10 @@ Future<Uint8List> renderLetterPdf({
                       fontWeight: pw.FontWeight.bold,
                     ),
                   ),
-                  const pw.SizedBox(height: 30),
+                  pw.SizedBox(height: 30),
                   pw.Text(salutation,
                       style: const pw.TextStyle(fontSize: 12)),
-                  const pw.SizedBox(height: 15),
+                  pw.SizedBox(height: 15),
 
                   // Body: fixed-height clip zone — breaks cleanly at the
                   // bottom edge instead of running into footer geometry.
@@ -109,14 +109,14 @@ Future<Uint8List> renderLetterPdf({
                       body,
                       style: const pw.TextStyle(
                         fontSize: 12,
-                        lineHeight: 1.5,
+                        height: 1.5,
                       ),
                       softWrap: true,
-                      overflow: pw.TextSpan.clip,
+                      overflow: pw.TextOverflow.clip,
                     ),
                   ),
 
-                  const pw.Spacer(),
+                  pw.Spacer(),
                   signatureBlock,
                 ],
               ),

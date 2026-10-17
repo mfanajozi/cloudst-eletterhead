@@ -77,7 +77,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             _header(context),
             // Persistent storage-isolation banner.
             Material(
-              color: const Color(0xFFD4AF37).withOpacity(0.12),
+              color: const Color(0xFFD4AF37).withValues(alpha: 0.12),
               child: Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -119,7 +119,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             'No letters yet.\nTap "New Letter" to write your first one.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                                color: const Color(0xFFE4E4E4).withOpacity(0.7)),
+                                color: const Color(0xFFE4E4E4).withValues(alpha: 0.7)),
                           ),
                         ],
                       ),

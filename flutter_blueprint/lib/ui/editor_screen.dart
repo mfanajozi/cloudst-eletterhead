@@ -175,7 +175,7 @@ class _EditorScreenState extends State<EditorScreen> {
                 Text('Signature',
                     style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: const Color(0xFFE4E4E4).withOpacity(0.9))),
+                        color: const Color(0xFFE4E4E4).withValues(alpha: 0.9))),
                 const Spacer(),
                 TextButton.icon(
                   onPressed: () => _signatureController.clear(),
@@ -248,9 +248,9 @@ class _EditorScreenState extends State<EditorScreen> {
     return TextField(
       controller: controller,
       maxLines: maxLines,
-      alignLabelWithHint: alignLabelWithHint,
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
+        alignLabelWithHint: alignLabelWithHint,
         labelText: label,
         labelStyle: const TextStyle(color: Color(0xFF8A8A8A)),
         filled: true,
