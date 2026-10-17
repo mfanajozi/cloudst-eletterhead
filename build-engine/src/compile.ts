@@ -129,40 +129,65 @@ async function publishArtifact(
   const body = fs.readFileSync(uploadPath);
   const dashUrl = (process.env.DASHBOARD_URL || "").replace(/\/+$/, "");
   const ingestKey = process.env.ARTIFACT_INGEST_KEY || "";
+  // CI-only env (set in build.yml) — enables an automatic Supabase Storage
+  // fallback when the dashboard ingest endpoint is unreachable/misconfigured.
+  const allowStorageFallback = process.env.ARTIFACT_FALLBACK_STORAGE === "1";
 
   if (dashUrl && ingestKey) {
     console.log(`[6/6] Publishing artifact → dashboard server storage`);
-    const res = await fetch(
-      `${dashUrl}/api/builds/artifact?build_id=${BUILD_ID}&client_id=${CLIENT_ID}` +
-        `&platform=${PLATFORM}&version_code=${encodeURIComponent(VERSION_CODE)}` +
-        `&build_number=${encodeURIComponent(String(BUILD_NUMBER))}` +
-        `&filename=${encodeURIComponent(artifact.name)}`,
-      {
-        method: "PUT",
-        headers: {
-          "x-artifact-key": ingestKey,
-          "Content-Type": artifact.contentType,
-        },
-        body,
-      }
-    );
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(
-        `Dashboard artifact upload failed (HTTP ${res.status}): ${text.slice(0, 200)}`
+    try {
+      const res = await fetch(
+        `${dashUrl}/api/builds/artifact?build_id=${BUILD_ID}&client_id=${CLIENT_ID}` +
+          `&platform=${PLATFORM}&version_code=${encodeURIComponent(VERSION_CODE)}` +
+          `&build_number=${encodeURIComponent(String(BUILD_NUMBER))}` +
+          `&filename=${encodeURIComponent(artifact.name)}`,
+        {
+          method: "PUT",
+          headers: {
+            "x-artifact-key": ingestKey,
+            "Content-Type": artifact.contentType,
+          },
+          body,
+        }
       );
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(
+          `Dashboard artifact upload failed (HTTP ${res.status}): ${text.slice(0, 200)}`
+        );
+      }
+      const json = (await res.json()) as { ok?: boolean; download_url?: string };
+      if (!json.ok || !json.download_url) {
+        throw new Error("Dashboard artifact upload returned no download_url");
+      }
+      console.log(`     stored on server → ${json.download_url}`);
+      return json.download_url;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(
+        `     ⚠ Dashboard ingest unavailable (${msg})` +
+          (allowStorageFallback
+            ? " — falling back to Supabase Storage"
+            : " — re-throwing (set ARTIFACT_FALLBACK_STORAGE=1 to fall back)")
+      );
+      if (allowStorageFallback) {
+        return publishToSupabaseStorage(uploadPath, body, artifact);
+      }
+      throw err;
     }
-    const json = (await res.json()) as { ok?: boolean; download_url?: string };
-    if (!json.ok || !json.download_url) {
-      throw new Error("Dashboard artifact upload returned no download_url");
-    }
-    console.log(`     stored on server → ${json.download_url}`);
-    return json.download_url;
   }
 
   console.log(
     "[6/6] Publishing artifact → Supabase app-artifacts (fallback; DASHBOARD_URL/ARTIFACT_INGEST_KEY not configured)"
   );
+  return publishToSupabaseStorage(uploadPath, body, artifact);
+}
+
+async function publishToSupabaseStorage(
+  uploadPath: string,
+  body: Buffer,
+  artifact: { name: string; contentType: string }
+): Promise<string> {
   const objectPath = await uploadArtifact(
     `${PLATFORM}/${path.basename(uploadPath)}`,
     body,

@@ -61,7 +61,9 @@ env:
   # If both are empty the engine falls back to Supabase Storage.
   DASHBOARD_URL: ${{ secrets.DASHBOARD_URL }}
   ARTIFACT_INGEST_KEY: ${{ secrets.ARTIFACT_INGEST_KEY }}
-  KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+  # If the dashboard ingest endpoint fails (503 = Vercel env vars missing),
+  # fall back to Supabase Storage instead of failing the whole build.
+  ARTIFACT_FALLBACK_STORAGE: "1"  KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
   KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
   KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
   KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
