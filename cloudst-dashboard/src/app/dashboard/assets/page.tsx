@@ -18,6 +18,7 @@ type UploadSlots = {
 };
 
 const PLATFORMS = ["android", "ios", "windows", "web"] as const;
+type Platform = (typeof PLATFORMS)[number];
 
 export default function AssetUploadPage() {
   const router = useRouter();
@@ -25,11 +26,22 @@ export default function AssetUploadPage() {
 
   const [companyName, setCompanyName] = useState("");
   const [slots, setSlots] = useState<UploadSlots>({ pdf: null, icon: null, splash: null });
+  const [platforms, setPlatforms] = useState<Platform[]>(["android"]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const allFilled = Boolean(companyName && slots.pdf && slots.icon && slots.splash);
+  const allFilled = Boolean(
+    companyName && slots.pdf && slots.icon && slots.splash && platforms.length > 0
+  );
+
+  const togglePlatform = (p: Platform) => {
+    if (submitting) return;
+    setError(null);
+    setPlatforms((prev) =>
+      prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
+    );
+  };
 
   const readFile = (slot: keyof UploadSlots) => (file: File | null) => {
     if (!file) return;
@@ -117,9 +129,10 @@ export default function AssetUploadPage() {
         .eq("id", clientId);
       if (urlErr) throw new Error(urlErr.message);
 
-      // Queue initial builds for every platform target
+      // Queue builds only for the platforms selected on the form — every build
+      // row is its own trigger in the Builds page, so nothing compiles together.
       const { error: buildErr } = await supabase.from("app_builds").insert(
-        PLATFORMS.map((target_platform) => ({
+        platforms.map((target_platform) => ({
           client_id: clientId,
           target_platform,
           status: "queued" as const,
@@ -127,7 +140,9 @@ export default function AssetUploadPage() {
       );
       if (buildErr) throw new Error(buildErr.message);
 
-      setSuccess(`Client "${companyName}" provisioned — 4 builds queued across Android, iOS, Windows & Web.`);
+      setSuccess(
+        `Client "${companyName}" provisioned — ${platforms.length} build${platforms.length === 1 ? "" : "s"} queued for ${platforms.join(", ")}. Trigger each from the Builds page when ready.`
+      );
       setCompanyName("");
       setSlots({ pdf: null, icon: null, splash: null });
       router.refresh();
@@ -210,6 +225,37 @@ export default function AssetUploadPage() {
               />
             </div>
 
+            <div className="space-y-2">
+              <Label>Build Platforms</Label>
+              <p className="text-xs text-charcoal-100">
+                Select which targets to queue. Each build is dispatched separately from
+                the Builds page — picking one does not compile the others.
+              </p>
+              <div className="flex flex-wrap gap-2 pt-1" role="group" aria-label="Build platforms">
+                {PLATFORMS.map((p) => {
+                  const active = platforms.includes(p);
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      disabled={submitting}
+                      aria-pressed={active}
+                      onClick={() => togglePlatform(p)}
+                      className={cn(
+                        "rounded-full border px-4 py-1.5 text-sm capitalize transition-colors",
+                        active
+                          ? "border-gold-200 bg-gold-200/10 text-gold-200"
+                          : "border-charcoal-200/60 text-charcoal-100 hover:border-charcoal-100/60",
+                        submitting && "pointer-events-none opacity-60"
+                      )}
+                    >
+                      {p}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <Button
               type="submit"
               variant="gold"
@@ -226,8 +272,8 @@ export default function AssetUploadPage() {
               )}
             </Button>
             <p className="text-center text-xs text-charcoal-100">
-              Provisions the client in Supabase, uploads assets to storage, and queues 4
-              platform builds for the compilation engine.
+              Provisions the client in Supabase, uploads assets to storage, and queues the
+              selected platform builds for the compilation engine.
             </p>
           </form>
         </CardContent>
