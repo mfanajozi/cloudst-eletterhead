@@ -52,10 +52,12 @@ async function updateBuild(patch: Record<string, unknown>) {
   if (!res.ok) throw new Error(`app_builds PATCH failed: ${res.status}`);
 }
 
+// New-format keys (sb_secret_…) are rejected by Storage when only the
+// Authorization header is present — every call sends apikey as well.
 async function downloadAsset(fileName: string): Promise<Buffer> {
   const res = await fetch(
     `${SUPA_URL}/storage/v1/object/letterhead-assets/${CLIENT_ID}/${fileName}`,
-    { headers: { Authorization: `Bearer ${SUPA_SERVICE}` } }
+    { headers: { Authorization: `Bearer ${SUPA_SERVICE}`, apikey: SUPA_SERVICE } }
   );
   if (!res.ok)
     throw new Error(
@@ -74,6 +76,7 @@ async function uploadArtifact(
     method: "POST",
     headers: {
       Authorization: `Bearer ${SUPA_SERVICE}`,
+      apikey: SUPA_SERVICE,
       "Content-Type": contentType,
       "x-upsert": "true",
     },
@@ -92,6 +95,7 @@ async function createSignedUrl(objectPath: string): Promise<string> {
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${SUPA_SERVICE}`,
+      apikey: SUPA_SERVICE,
     },
     body: JSON.stringify({
       path: objectPath.replace(/^app-artifacts\//, ""),
