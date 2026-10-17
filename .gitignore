@@ -1,0 +1,48 @@
+# CloudST eLetterhead — Protected / internal folders (never push to GitHub)
+docs/
+build-guide-local/
+.env
+
+# Environment files (all variants)
+.env*
+!.env.example
+
+# Node.js
+node_modules/
+.next/
+out/
+dist/
+build/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Flutter
+.dart_tool/
+.build/
+ios/.symlinks/
+ios/Flutter/App.framework
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+android/app/key.properties
+android/key.jks
+android/key.jks.kse
+
+# AI agent tooling (local only)
+.agents/
+skills-lock.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# OS
+Thumbs.db
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local

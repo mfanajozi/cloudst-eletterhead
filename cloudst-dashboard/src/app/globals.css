@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   CloudST eLetterhead — Dark Theme (charcoal & gold)
+   Source of truth for the brand palette. Dark-first, never light.
+   ========================================================================== */
+
+@theme {
+  /* Charcoal — surfaces go dark (700–900), content text goes light (50–500) */
+  --color-charcoal-50: #fafafa;
+  --color-charcoal-100: #e4e4e4; /* secondary text on dark */
+  --color-charcoal-200: #2a2a2a; /* borders, subtle fills, dark buttons */
+  --color-charcoal-300: #a3a3a3; /* muted text */
+  --color-charcoal-400: #8a8a8a; /* placeholder / captions */
+  --color-charcoal-500: #6b6b6b; /* dim hints */
+  --color-charcoal-600: #262626; /* hover surface on dark buttons */
+  --color-charcoal-700: #1f1f1f; /* raised panels */
+  --color-charcoal-800: #161616; /* sidebar / solid cards */
+  --color-charcoal-900: #0a0a0a; /* page background */
+
+  /* Gold — #d4af37 brand gold as the 200 anchor */
+  --color-gold-50: #faf3dd;
+  --color-gold-100: #e6d08e; /* gold button hover */
+  --color-gold-200: #d4af37; /* primary gold */
+  --color-gold-300: #b8942c;
+  --color-gold-400: #b8942c; /* accent text / rings (visible on dark) */
+  --color-gold-500: #8a6d1f;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-charcoal-900);
+  color: #ffffff;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Gold text selection — subtle brand touch */
+::selection {
+  background-color: rgb(212 175 55 / 0.35);
+  color: #ffffff;
+}
+
+/* Slim dark scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-charcoal-600) transparent;
+}
