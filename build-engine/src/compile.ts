@@ -15,6 +15,24 @@ const CLIENT_ID = env("CLIENT_ID");
 const BUILD_ID = env("BUILD_ID");
 const APP_NAME = env("APP_NAME", "CloudST Client");
 const PACKAGE_ID = env("PACKAGE_ID", "com.cloudst.eletterhead");
+
+// Web builds ship as a folder zip that gets uploaded to the white-label
+// hosting folder on the shared domain, e.g. motelo.co.za/eletterhead/<slug>/.
+// The slug is derived from PACKAGE_ID by dropping generic segments so each
+// client gets a deterministic unique folder; WEB_BASE_ROOT can override the
+// host root (must start with "/").
+const WEB_BASE = (() => {
+  const root = (process.env.WEB_BASE_ROOT || "/eletterhead").replace(/\/+$/, "");
+  const generic = new Set(["eletterhead", "com", "org", "net", "io", "app", "co", "za"]);
+  const seed = PACKAGE_ID.split(".")
+    .filter((s) => s && !generic.has(s.toLowerCase()))
+    .join("-")
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return `${root}/${seed || "client"}/`;
+})();
 const VERSION_CODE = env("VERSION_CODE", "1.0.0");
 const BUILD_NUMBER = env("BUILD_NUMBER", "1");
 const SUPA_URL = (env("SUPABASE_URL") ?? "").replace(/\/+$/, "");
@@ -245,6 +263,38 @@ function rewriteBrand() {
     .replace(/const String APP_NAME = '.*';/, `const String APP_NAME = '${APP_NAME.replace(/'/g, "\\'")}';`)
     .replace(/const String APP_PACKAGE = '.*';/, `const String APP_PACKAGE = '${PACKAGE_ID}';`);
   write(brandPath, brand);
+
+  // Web — white-label the PWA shell so each client's hosted folder carries
+  // their brand (title bar, apple touch title, manifest name). Asset paths in
+  // the Flutter web template are already relative, so the folder is portable;
+  // the <base href> itself is baked at build time via --base-href=${WEB_BASE}.
+  const safeAppName = APP_NAME.replace(/[<>&]/g, "");
+  const webIndexPath = path.join(WORKSPACE, "web", "index.html");
+  if (fs.existsSync(webIndexPath)) {
+    write(
+      webIndexPath,
+      read(webIndexPath)
+        .replace(/<title>.*?<\/title>/, `<title>${safeAppName}</title>`)
+        .replace(
+          /apple-mobile-web-app-title" content="[^"]*"/,
+          `apple-mobile-web-app-title" content="${safeAppName}"`
+        )
+        .replace(
+          /name="description" content="[^"]*"/,
+          `name="description" content="${safeAppName} eLetterhead business documents"`
+        )
+    );
+  }
+  const webManifestPath = path.join(WORKSPACE, "web", "manifest.json");
+  if (fs.existsSync(webManifestPath)) {
+    write(
+      webManifestPath,
+      read(webManifestPath)
+        .replace(/"name": "[^"]*"/, `"name": "${safeAppName}"`)
+        .replace(/"short_name": "[^"]*"/, `"short_name": "${safeAppName.slice(0, 12)}"`)
+        .replace(/"description": "[^"]*"/, `"description": "${safeAppName} eLetterhead business documents"`)
+    );
+  }
 
   // Android
   const manifestPath = path.join(
@@ -515,7 +565,10 @@ async function main() {
       contentType: "application/vnd.android.package-archive",
     };
   } else if (PLATFORM === "web") {
-    sh("flutter build web --release");
+    // --base-href bakes the white-label hosting folder
+    // (motelo.co.za/eletterhead/<slug>/) into index.html so the tree is
+    // upload-ready via FTP / cPanel without post-editing.
+    sh(`flutter build web --release --base-href=${WEB_BASE}`);
     artifact = {
       file: path.join(WORKSPACE, "build", "web"),
       name: `${PLATFORM}-v${VERSION_CODE}.zip`,
